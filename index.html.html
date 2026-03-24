@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Armed Forces — Command Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0b0d12;--surface:#131720;--surface2:#1a2030;
+  --border:#1e2638;--border2:#2a3450;
+  --gold:#c8a84b;--gold-dim:#7a6530;--gold-glow:rgba(200,168,75,0.15);
+  --blue:#4da6c8;--blue-dim:rgba(77,166,200,0.12);
+  --text:#d0d9ee;--text-muted:#6a7a9a;--text-dim:#3a4560;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:999}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 22px;background:linear-gradient(90deg,#0b0d12,#111520);border-bottom:1px solid var(--border2);position:relative;z-index:10}
+.hdr-l{display:flex;align-items:center;gap:13px}
+.hex{width:36px;height:36px;background:var(--gold);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:10px;color:#0b0d12;flex-shrink:0}
+.htitle{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase}
+.hsub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:1.5px;margin-top:2px}
+.warn{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);background:rgba(200,168,75,.08);border:1px solid rgba(200,168,75,.22);padding:4px 12px;border-radius:2px}
+.tabs{display:flex;gap:2px;padding:9px 22px 0;background:var(--bg);border-bottom:1px solid var(--border);position:relative;z-index:9}
+.tab{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);padding:7px 18px;border-radius:4px 4px 0 0;cursor:pointer;border:1px solid transparent;border-bottom:none;transition:all .15s}
+.tab:hover{color:var(--text);background:var(--surface)}
+.tab.active{color:var(--gold);background:var(--surface);border-color:var(--border2);margin-bottom:-1px}
+.shell{display:flex;height:calc(100vh - 83px)}
+.org-view{display:flex;flex:1;overflow:hidden}
+.org-view.hidden{display:none}
+.matrix-view{display:none;flex:1;flex-direction:column;overflow:hidden;padding:18px 22px}
+.matrix-view.active{display:flex}
+.tree-panel{width:310px;min-width:240px;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);flex-shrink:0}
+.tree-panel::-webkit-scrollbar{width:4px}.tree-panel::-webkit-scrollbar-thumb{background:var(--border2)}
+.tree-section{border-bottom:1px solid var(--border)}
+.tree-header{display:flex;align-items:center;gap:8px;padding:10px 13px;cursor:pointer;user-select:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:2px;text-transform:uppercase;transition:background .12s}
+.tree-header:hover{background:var(--surface2)}
+.svc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.chevron{margin-left:auto;font-size:9px;color:var(--text-muted);transition:transform .2s}
+.tree-section.open .chevron{transform:rotate(90deg)}
+.tree-children{display:none;padding:4px 0}
+.tree-section.open .tree-children{display:block}
+.tree-node{display:flex;align-items:center;gap:8px;padding:5px 13px 5px 26px;cursor:pointer;font-size:12px;transition:background .1s;position:relative}
+.tree-node::before{content:'';position:absolute;left:19px;width:5px;height:1px;background:var(--border2)}
+.tree-node:hover{background:var(--surface2)}
+.tree-node.sel{background:var(--gold-glow);border-right:2px solid var(--gold)}
+.tn-abbr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);min-width:70px;font-weight:500}
+.tn-name{font-size:11px;color:var(--text-muted);line-height:1.3}
+.detail-panel{flex:1;overflow-y:auto;padding:22px;background:var(--bg)}
+.detail-panel::-webkit-scrollbar{width:4px}.detail-panel::-webkit-scrollbar-thumb{background:var(--border2)}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--text-dim)}
+.ph-icon{font-size:44px;opacity:.3}.ph-txt{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px}
+.dcard{display:none}.dcard.vis{display:block}
+.dheader{display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.dbadge{padding:4px 10px;border-radius:2px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#fff;white-space:nowrap;margin-right:14px;align-self:flex-start;margin-top:4px}
+.dabbr{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:32px;letter-spacing:2px;color:var(--gold);line-height:1}
+.dname{font-size:13px;color:var(--text-muted);margin-top:3px}
+.dloc{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);margin-top:6px}
+.sec-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.mission-txt{font-size:13px;color:var(--text-muted);line-height:1.65;margin-bottom:20px}
+.tags-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:20px}
+.dtag{background:var(--blue-dim);border:1px solid rgba(77,166,200,.25);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 9px;border-radius:2px;text-transform:uppercase}
+.prow{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:14px;position:relative;overflow:hidden}
+.pcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.pcard.pri::before{background:var(--gold)}.pcard.dep::before{background:var(--blue)}
+.prank{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:5px}
+.pname{font-size:13px;font-weight:600;color:var(--text)}.ptitle{font-size:10px;color:var(--text-muted);margin-top:2px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.iwidget{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:14px}
+.iwlabel{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px}
+.iwval{font-size:13px;font-weight:500}.iwsub{font-size:10px;color:var(--text-muted);margin-top:2px}
+.budget-row{display:flex;align-items:center;gap:10px}
+.bbar-wrap{display:flex;gap:3px}.bbar{width:9px;height:16px;background:var(--border);border-radius:1px}.bbar.on{background:var(--gold)}
+.btier{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)}
+.acq-block{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:14px;font-size:12px;color:var(--text-muted);line-height:1.65}
+.mcontrols{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.flabel{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim)}
+.fbtns{display:flex;gap:3px;flex-wrap:wrap}
+.fbtn{background:var(--surface);border:1px solid var(--border);color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 9px;border-radius:2px;cursor:pointer;transition:all .12s}
+.fbtn:hover{border-color:var(--border2);color:var(--text)}
+.fbtn.on{background:var(--gold-glow);border-color:var(--gold-dim);color:var(--gold)}
+.msearch{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 12px;border-radius:2px;outline:none;width:200px;margin-left:auto}
+.msearch:focus{border-color:var(--gold-dim)}.msearch::placeholder{color:var(--text-dim)}
+.mtable-wrap{overflow:auto;flex:1}
+.mtable-wrap::-webkit-scrollbar{width:4px;height:4px}.mtable-wrap::-webkit-scrollbar-thumb{background:var(--border2)}
+.mtable{width:100%;border-collapse:collapse;font-size:12px}
+.mtable th{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);text-align:left;padding:9px 11px;border-bottom:1px solid var(--border2);position:sticky;top:0;background:var(--bg);white-space:nowrap;cursor:pointer;user-select:none}
+.mtable th:hover{color:var(--text-muted)}
+.mtable tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .08s}
+.mtable tbody tr:hover{background:var(--surface)}
+.mtable tbody tr.sel{background:var(--gold-glow)}
+.mtable td{padding:7px 11px;vertical-align:middle}
+.td-abbr{font-family:'JetBrains Mono',monospace;color:var(--gold);font-size:10px;font-weight:500;white-space:nowrap}
+.td-pip{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+.td-svc{font-family:'JetBrains Mono',monospace;font-size:9px;white-space:nowrap}
+.td-loc{font-size:10px;color:var(--text-muted);white-space:nowrap}
+.td-ptags{display:flex;gap:3px;flex-wrap:wrap}
+.td-tag{background:var(--blue-dim);border:1px solid rgba(77,166,200,.2);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 6px;border-radius:2px;white-space:nowrap}
+.td-pname{font-size:11px;color:var(--text)}.td-ptitle{font-size:9px;color:var(--text-muted)}
+.mb-wrap{display:flex;gap:2px}.mb{width:5px;height:10px;background:var(--border);border-radius:1px}.mb.on{background:var(--gold)}
+.td-acq{font-size:10px;color:var(--text-muted);max-width:170px}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hex">US</div>
+    <div>
+      <div class="htitle">US Armed Forces &mdash; Command Intelligence</div>
+      <div class="hsub">ALL BRANCHES &middot; KEY LOCATIONS &middot; LEADERSHIP &middot; ACQUISITION NODES</div>
+    </div>
+  </div>
+  <div class="warn">&#9888; LEADERSHIP: VERIFY CURRENT ASSIGNMENTS</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" id="tab-org">&#9636; Org Tree</div>
+  <div class="tab" id="tab-mat">&#9638; Command Matrix</div>
+</div>
+
+<div class="shell">
+  <div class="org-view" id="org-view">
+    <div class="tree-panel" id="tree-panel"></div>
+    <div class="detail-panel">
+      <div class="placeholder" id="placeholder">
+        <div class="ph-icon">&#9672;</div>
+        <div class="ph-txt">SELECT A COMMAND NODE</div>
+      </div>
+      <div class="dcard" id="dcard"></div>
+    </div>
+  </div>
+  <div class="matrix-view" id="matrix-view">
+    <div class="mcontrols">
+      <span class="flabel">SERVICE</span>
+      <div class="fbtns" id="svc-filters"></div>
+      <input class="msearch" id="msearch" placeholder="Search commands, locations, domains...">
+    </div>
+    <div class="mtable-wrap">
+      <table class="mtable">
+        <thead><tr>
+          <th>ABBR</th><th>COMMAND</th><th>SVC</th><th>LOCATION</th>
+          <th>COMMANDING OFFICER</th><th>DEPUTY / 2IC</th>
+          <th>DOMAINS</th><th>BUDGET</th><th>ACQUISITION OFFICE</th>
+        </tr></thead>
+        <tbody id="mtbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+var SVC_COLOR = {DOD:'#c8a84b',ARMY:'#5a8a6a',NAVY:'#2a5080',USMC:'#9a2020',USAF:'#2060a0',USSF:'#5a5880',USCG:'#c87020',JOINT:'#7060a0'};
+var SVC_LABEL = {DOD:'Dept. of Defense',ARMY:'Army',NAVY:'Navy',USMC:'Marine Corps',USAF:'Air Force',USSF:'Space Force',USCG:'Coast Guard',JOINT:'Joint/Combatant'};
+
+var NODES = [
+  {id:'osd',abbr:'OSD',name:'Office of the Secretary of Defense',service:'DOD',location:'Pentagon, Arlington, VA',mission:'Civilian oversight of all DoD components. Sets policy, budget, acquisition strategy, and international defense agreements.',domains:['Policy','Oversight','Strategy','Acquisition'],leader:{title:'Secretary of Defense',name:'Pete Hegseth'},deputy:{title:'Deputy Secretary of Defense',name:'Stephen Feinberg'},budget:'L',acq:'USD(A&S) - Under Secretary of Defense for Acquisition and Sustainment'},
+  {id:'jcs',abbr:'JCS',name:'Joint Chiefs of Staff',service:'DOD',location:'Pentagon, Arlington, VA',mission:'Principal military advisors to the President, NSC, and SECDEF. Oversees joint operations planning and requirements.',domains:['Joint Ops','Strategy','Planning','Requirements'],leader:{title:'Chairman (CJCS)',name:'Gen. Dan Caine (USAF)*'},deputy:{title:'Vice Chairman (VCJCS)',name:'Adm. Christopher Grady (USN)*'},budget:'L',acq:'JROC - Joint Requirements Oversight Council'},
+  {id:'darpa',abbr:'DARPA',name:'Defense Advanced Research Projects Agency',service:'DOD',location:'Arlington, VA',mission:'Breakthrough technologies for national security. Bridges basic research and operational capability across all domains.',domains:['R&D','Emerging Tech','AI/ML','Hypersonics','Autonomy'],leader:{title:'Director',name:'Dr. Stefanie Tompkins*'},deputy:{title:'Deputy Director',name:'TBD*'},budget:'L',acq:'BAA, OTA, SBIR/STTR - direct program offices per technical office'},
+  {id:'dia',abbr:'DIA',name:'Defense Intelligence Agency',service:'DOD',location:'Bolling AFB, Washington, DC',mission:'All-source military intelligence production and DoD HUMINT coordination worldwide.',domains:['Intelligence','HUMINT','OSINT','GEOINT','All-Source'],leader:{title:'Director',name:'Lt. Gen. Jeffrey Kruse (USAF)*'},deputy:{title:'Deputy Director',name:'TBD*'},budget:'L',acq:'DIA Acquisition via OUSD(I&S)'},
+  {id:'nga',abbr:'NGA',name:'National Geospatial-Intelligence Agency',service:'DOD',location:'Springfield, VA',mission:'GEOINT analysis, imagery exploitation, and mapping for national security and navigation.',domains:['GEOINT','IMINT','Mapping','AI/ML','Commercial Imagery'],leader:{title:'Director',name:'Vice Adm. Frank Whitworth (USN)*'},deputy:{title:'Deputy Director',name:'TBD*'},budget:'L',acq:'NGA Acquisition - commercial GEOINT vendors, data subscriptions, analytic tools'},
+  {id:'nsa',abbr:'NSA/CSS',name:'National Security Agency / Central Security Service',service:'DOD',location:'Fort Meade, MD',mission:'SIGINT collection and production. Cybersecurity and information assurance for national security systems.',domains:['SIGINT','Cyber','InfoSec','Cryptology','CNO'],leader:{title:'Director (dual-hat CYBERCOM)',name:'Gen. Timothy Haugh (USAF)*'},deputy:{title:'Deputy Director',name:'Wendy Noble*'},budget:'L',acq:'NSA Acquisition - SIGINT systems, cyber platforms, enterprise IT'},
+  {id:'hqda',abbr:'HQDA',name:'Headquarters, Dept. of the Army',service:'ARMY',location:'Pentagon, Arlington, VA',mission:'Army service administration, strategic policy, force design, and resourcing.',domains:['Policy','Oversight','Force Design','Strategy'],leader:{title:'Secretary of the Army',name:'Daniel Driscoll'},deputy:{title:'Chief of Staff of the Army (CSA)',name:'Gen. Randy George*'},budget:'L',acq:'ASA(ALT) - Assistant Secretary of Army for Acquisition, Logistics and Technology'},
+  {id:'forscom',abbr:'FORSCOM',name:'Army Forces Command',service:'ARMY',location:'Fort Liberty (Bragg), NC',mission:'Train, mobilize, deploy, and sustain US-based Army conventional forces for combatant commands.',domains:['Land Combat','Readiness','Force Generation','Training'],leader:{title:'Commanding General',name:'Gen. Gary Brito*'},deputy:{title:'Deputy CG',name:'LTG TBD*'},budget:'L',acq:'N/A - operational command; acquisition through AMC/PEOs'},
+  {id:'tradoc',abbr:'TRADOC',name:'Army Training and Doctrine Command',service:'ARMY',location:'Fort Eustis, VA',mission:'Recruit, train, and educate soldiers. Develops doctrine, organizational design, and training systems.',domains:['Training','Doctrine','Education','Force Design'],leader:{title:'Commanding General',name:'Gen. Paul Funk*'},deputy:{title:'Deputy CG/Chief of Staff',name:'LTG TBD*'},budget:'M',acq:'Training system acquisitions coordinated through AMC and FORSCOM'},
+  {id:'army-amc',abbr:'AMC',name:'Army Materiel Command',service:'ARMY',location:'Redstone Arsenal, AL',mission:'Develop, acquire, sustain, and distribute Army materiel. Manages PEOs, depots, and arsenals worldwide.',domains:['Acquisition','Logistics','Sustainment','R&D'],leader:{title:'Commanding General',name:'Gen. Christopher Mohan*'},deputy:{title:'Deputy CG / Executive Director',name:'LTG/SES TBD*'},budget:'L',acq:'Multiple PEOs (C3T, IEW&S, Soldier, Aviation, Missiles); CCDC; DEVCOM'},
+  {id:'inscom',abbr:'INSCOM',name:'Army Intelligence and Security Command',service:'ARMY',location:'Fort Belvoir, VA',mission:'Worldwide intelligence, security, and information operations in support of Army and joint commanders.',domains:['Intelligence','SIGINT','HUMINT','Cyber','InfoOps'],leader:{title:'Commanding General',name:'MG TBD*'},deputy:{title:'Deputy CG',name:'BG TBD*'},budget:'M',acq:'Coordinated via ASA(ALT); intelligence platforms via PEO IEW&S'},
+  {id:'arcyber',abbr:'ARCYBER',name:'Army Cyber Command',service:'ARMY',location:'Fort Eisenhower (Gordon), GA',mission:'Conduct cyberspace and electromagnetic warfare operations in support of Army and joint missions.',domains:['Cyber','EW','Signals','InfoOps','DCO/OCO'],leader:{title:'Commanding General',name:'LTG Maria Barrett*'},deputy:{title:'Deputy CG',name:'MG TBD*'},budget:'M',acq:'Cyber platforms via PEO EIS and PEO C3T'},
+  {id:'peo-c3t',abbr:'PEO C3T',name:'PEO Command, Control and Comms-Tactical',service:'ARMY',location:'Aberdeen Proving Ground, MD',mission:'Deliver tactical network systems (C2, comms, data) from Army HQ down to Brigade Combat Team level.',domains:['C2','Comms','Networking','Tactical IT','Radios'],leader:{title:'PEO',name:'BG Jeth Rey*'},deputy:{title:'Deputy PEO',name:'SES TBD*'},budget:'L',acq:'WIN-T, HMS, PACE, Integrated Tactical Network - direct acquisition authority'},
+  {id:'peo-iews',abbr:'PEO IEW&S',name:'PEO Intelligence, EW and Sensors',service:'ARMY',location:'Aberdeen Proving Ground, MD',mission:'Acquire and field intelligence collection systems, electronic warfare platforms, and sensor networks.',domains:['SIGINT','EW','ISR','Sensors','Aerial ISR'],leader:{title:'PEO',name:'BG Ed Barker*'},deputy:{title:'Deputy PEO',name:'SES TBD*'},budget:'L',acq:'IVAS sensors, Aerial ISR, Prophet, CUAS, EW platforms - direct acquisition authority'},
+  {id:'opnav',abbr:'OPNAV',name:'Office of the Chief of Naval Operations',service:'NAVY',location:'Pentagon, Arlington, VA',mission:'Navy service administration, strategy, force design, and budget. Integrates Navy requirements.',domains:['Policy','Oversight','Strategy','Requirements'],leader:{title:'Secretary of the Navy',name:'John Phelan'},deputy:{title:'Chief of Naval Operations (CNO)',name:'Adm. TBD*'},budget:'L',acq:'ASN(RD&A) - Assistant Secretary of Navy for Research, Development and Acquisition'},
+  {id:'navwar',abbr:'NAVWAR',name:'Naval Information Warfare Systems Command',service:'NAVY',location:'San Diego, CA',mission:'Acquire, develop, and deliver C4ISR, cybersecurity, space systems, and information warfare capabilities for the fleet.',domains:['C4ISR','Cyber','IT','Space','AI/ML','GEOINT'],leader:{title:'Commander',name:'VADM TBD*'},deputy:{title:'Technical Director (SES)',name:'SES TBD*'},budget:'L',acq:'PEO C4I, PEO Digital and Enterprise Services - C5ISR contracts, cyber platforms'},
+  {id:'navsea',abbr:'NAVSEA',name:'Naval Sea Systems Command',service:'NAVY',location:'Washington Navy Yard, DC',mission:'Design, build, deliver, and maintain the US Navy fleet of ships, submarines, and combat systems.',domains:['Shipbuilding','Combat Systems','Submarines','Carriers','Sustainment'],leader:{title:'Commander',name:'VADM William Galinis*'},deputy:{title:'Deputy Commander / Technical Director',name:'SES TBD*'},budget:'L',acq:'PEO Ships, PEO Submarines, PEO Carriers and Weapons, PEO Integrated Warfare Systems'},
+  {id:'navair',abbr:'NAVAIR',name:'Naval Air Systems Command',service:'NAVY',location:'Patuxent River, MD',mission:'Develop, acquire, test, and sustain aircraft, weapons, and sensor systems for Navy and Marine Corps aviation.',domains:['Aviation','Weapons','UAV','Sensors','Strike'],leader:{title:'Commander',name:'VADM Carl Chebi*'},deputy:{title:'Deputy Commander',name:'SES TBD*'},budget:'L',acq:'PEO(A) Aviation, PEO(W) Weapons, PEO(T) Tactical Aircraft, PEO(U&W) Unmanned and Weapons'},
+  {id:'nawcad',abbr:'NAWCAD',name:'Naval Air Warfare Center Aircraft Division',service:'NAVY',location:'Patuxent River, MD',mission:'Test, evaluate, and provide in-service engineering support for naval aircraft, avionics, and crew systems.',domains:['T&E','Aviation','Engineering','R&D','Simulation'],leader:{title:'Commander',name:'RDML TBD*'},deputy:{title:'Technical Director (SES)',name:'SES TBD*'},budget:'M',acq:'Under NAVAIR - test services, IRAD, advanced development programs'},
+  {id:'nawcwd',abbr:'NAWCWD',name:'Naval Air Warfare Center Weapons Division',service:'NAVY',location:'China Lake, CA',mission:'Research, development, test, and evaluation of air-launched, surface-launched, and ground-based weapons.',domains:['Weapons','T&E','R&D','Hypersonics','Directed Energy'],leader:{title:'Commander',name:'RDML TBD*'},deputy:{title:'Technical Director (SES)',name:'SES TBD*'},budget:'M',acq:'Under NAVAIR - weapons programs, directed energy, hypersonics'},
+  {id:'navsup',abbr:'NAVSUP',name:'Naval Supply Systems Command',service:'NAVY',location:'Mechanicsburg, PA',mission:'Global logistics, supply chain management, and acquisition support for the operating fleet.',domains:['Logistics','Supply Chain','Acquisition Support','Distribution'],leader:{title:'Commander',name:'VADM TBD*'},deputy:{title:'Deputy Commander',name:'SES TBD*'},budget:'M',acq:'FLC contracting offices worldwide; fleet sustainment contracts'},
+  {id:'navfac',abbr:'NAVFAC',name:'Naval Facilities Engineering Systems Command',service:'NAVY',location:'Washington, DC',mission:'Design, build, and operate Navy and Marine Corps shore installations worldwide.',domains:['Infrastructure','Facilities','Construction','Utilities'],leader:{title:'Commander',name:'VADM TBD*'},deputy:{title:'Deputy Commander',name:'SES TBD*'},budget:'M',acq:'NAVFAC contracting - MILCON, operations and maintenance, base services'},
+  {id:'onr',abbr:'ONR',name:'Office of Naval Research',service:'NAVY',location:'Arlington, VA',mission:'Fund, discover, develop, and transition science and technology into naval and national capabilities.',domains:['R&D','S&T','Emerging Tech','AI/ML','Autonomy'],leader:{title:'Chief of Naval Research',name:'RDML TBD*'},deputy:{title:'Deputy Chief of Naval Research',name:'SES TBD*'},budget:'M',acq:'BAA, grants, SBIR/STTR - basic and applied research across 6 science departments'},
+  {id:'hqmc',abbr:'HQMC',name:'Headquarters, US Marine Corps',service:'USMC',location:'Pentagon / Quantico, VA',mission:'Marine Corps administration, strategy, force design, and Force Design 2030 implementation.',domains:['Policy','Oversight','Doctrine','Expeditionary Ops'],leader:{title:'Secretary of the Navy (dual hat)',name:'John Phelan'},deputy:{title:'Commandant of the Marine Corps',name:'Gen. Eric Smith*'},budget:'L',acq:'ASN(RD&A) - shared acquisition authority with Navy'},
+  {id:'marcorsyscom',abbr:'MARCORSYSCOM',name:'Marine Corps Systems Command',service:'USMC',location:'Quantico, VA',mission:'Acquire, field, and sustain ground combat and information systems for the Marine Corps.',domains:['Ground Combat','C4I','Acquisition','Logistics','MAGTF Systems'],leader:{title:'Commander',name:'MG TBD*'},deputy:{title:'Deputy Commander',name:'SES TBD*'},budget:'M',acq:'PEO Land Systems, PEO LS (Littoral Ships), PEO Enterprise Information Systems'},
+  {id:'marforcom',abbr:'MARFORCOM',name:'Marine Forces Command',service:'USMC',location:'Norfolk, VA',mission:'Train and provide Marine forces for Atlantic-facing combatant commands (CENTCOM, EUCOM, AFRICOM).',domains:['Expeditionary Ops','Readiness','Atlantic','MAGTF'],leader:{title:'Commander',name:'LtGen TBD*'},deputy:{title:'Deputy Commander',name:'MajGen TBD*'},budget:'M',acq:'N/A - operational command'},
+  {id:'marforpac',abbr:'MARFORPAC',name:'Marine Forces Pacific',service:'USMC',location:'Camp H.M. Smith, HI',mission:'Train and provide Marine forces for INDOPACOM; primary force for Pacific deterrence and island warfare.',domains:['Expeditionary Ops','Pacific','Island Warfare','Deterrence'],leader:{title:'Commander',name:'LtGen TBD*'},deputy:{title:'Deputy Commander',name:'MajGen TBD*'},budget:'M',acq:'N/A - operational command'},
+  {id:'haf',abbr:'HAF',name:'Headquarters Air Force',service:'USAF',location:'Pentagon, Arlington, VA',mission:'Air Force service administration, strategy, force design, and resourcing.',domains:['Policy','Oversight','Strategy','Force Design'],leader:{title:'Secretary of the Air Force',name:'Troy Meink*'},deputy:{title:'Chief of Staff of the AF (CSAF)',name:'Gen. David Allvin*'},budget:'L',acq:'SAF/AQ - Air Force Acquisition Authority'},
+  {id:'acc',abbr:'ACC',name:'Air Combat Command',service:'USAF',location:'Langley-Eustis, VA',mission:'Organize, train, equip, and provide combat-ready air forces (fighters, bombers, ISR, C2) for combatant commands.',domains:['Air Superiority','Strike','ISR','C2','EW'],leader:{title:'Commander',name:'Gen. Kenneth Wilsbach*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'N/A - operational command; acquisition through AFMC/AFLCMC'},
+  {id:'afmc',abbr:'AFMC',name:'Air Force Materiel Command',service:'USAF',location:'Wright-Patterson AFB, OH',mission:'Research, develop, acquire, test, and sustain Air Force weapons systems and enterprise IT.',domains:['Acquisition','R&D','Sustainment','T&E','Logistics'],leader:{title:'Commander',name:'Gen. Duke Richardson*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'AFLCMC, AFRL, AFSC (Sustainment Center), AFTC (Test Center)'},
+  {id:'aflcmc',abbr:'AFLCMC',name:'AF Life Cycle Management Center',service:'USAF',location:'Wright-Patterson AFB, OH',mission:'Program management from cradle to grave for USAF aircraft, weapons, and digital systems.',domains:['Program Mgmt','Acquisition','Sustainment','Digital Systems'],leader:{title:'Commander',name:'LtGen TBD*'},deputy:{title:'Executive Director (SES)',name:'SES TBD*'},budget:'L',acq:'PEOs: Digital and AI, C2 and Battle Mgmt (Hanscom), Bombers, Fighters, ISR, Ground Systems'},
+  {id:'afrl',abbr:'AFRL',name:'Air Force Research Laboratory',service:'USAF',location:'Wright-Patterson AFB, OH',mission:'Leading basic and applied research for the Air Force and Space Force across 9 technical directorates.',domains:['R&D','AI/ML','Directed Energy','Propulsion','Sensors','Space'],leader:{title:'Commander',name:'MajGen TBD*'},deputy:{title:'Technical Director (SES)',name:'SES TBD*'},budget:'L',acq:'BAA, SBIR/STTR, OTA, AFWERX - 9 technical directorates; Kirtland, Eglin, Rome Labs'},
+  {id:'af-amc',abbr:'AMC (AF)',name:'Air Mobility Command',service:'USAF',location:'Scott AFB, IL',mission:'Provides airlift, air refueling, aeromedical evacuation, and air mobility support worldwide.',domains:['Airlift','Refueling','Aeromedical','Strategic Mobility'],leader:{title:'Commander',name:'Gen. Mike Minihan*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'N/A - operational command'},
+  {id:'hanscom',abbr:'Hanscom AFB',name:'Hanscom AFB - C2 and Battle Management',service:'USAF',location:'Hanscom AFB, MA',mission:'Acquire and sustain command and control systems, battle management, and enterprise networks for USAF.',domains:['C2','Battle Mgmt','Networking','ABMS','JADC2'],leader:{title:'PEO C2BM',name:'BG TBD*'},deputy:{title:'Deputy PEO',name:'SES TBD*'},budget:'L',acq:'ABMS, JADC2, GCCS-AF, AFNET - major C2 modernization programs'},
+  {id:'ocso',abbr:'OCSO',name:'Office of the Chief of Space Operations',service:'USSF',location:'Pentagon, Arlington, VA',mission:'Space Force service administration, strategy, force structure, and Guardian development.',domains:['Policy','Strategy','Space Domain','Force Design'],leader:{title:'Secretary (dual hat USAF)',name:'Troy Meink*'},deputy:{title:'Chief of Space Operations (CSO)',name:'Gen. Chance Saltzman*'},budget:'L',acq:'SAF/AQ (shared) + SSC as primary acquisition command'},
+  {id:'ssc',abbr:'SSC',name:'Space Systems Command',service:'USSF',location:'El Segundo, CA',mission:'Develop, acquire, and field space systems: GPS, SATCOM, missile warning, space domain awareness, and launch.',domains:['GPS/PNT','SATCOM','Missile Warning','SDA','Launch'],leader:{title:'Commander',name:'LtGen Philip Garrant*'},deputy:{title:'Executive Director (SES)',name:'SES TBD*'},budget:'L',acq:'PEOs: GPS/PNT; Space Domain Awareness; SATCOM; Launch Enterprise; C2/Cyber'},
+  {id:'spoc',abbr:'SpOC',name:'Space Operations Command',service:'USSF',location:'Peterson SFB, CO',mission:'Execute space operations: surveillance, missile warning, SATCOM, navigation, and orbital warfare.',domains:['Space Ops','Orbital Warfare','SDA','Missile Warning','SATCOM'],leader:{title:'Commander',name:'LtGen TBD*'},deputy:{title:'Deputy Commander',name:'MajGen TBD*'},budget:'L',acq:'N/A - operational command; acquisition through SSC'},
+  {id:'starcom',abbr:'STARCOM',name:'Space Training and Readiness Command',service:'USSF',location:'Peterson SFB, CO',mission:'Train Guardians, develop space doctrine, conduct test and evaluation of space systems.',domains:['Training','Doctrine','T&E','Education','Wargaming'],leader:{title:'Commander',name:'MajGen TBD*'},deputy:{title:'Deputy Commander',name:'BG TBD*'},budget:'S',acq:'Limited - training and simulation systems via SSC'},
+  {id:'cg-hq',abbr:'USCG HQ',name:'USCG Headquarters',service:'USCG',location:'Washington, DC',mission:'Maritime law enforcement, search and rescue, port security, drug/migrant interdiction, and DoD support.',domains:['Maritime Security','SAR','Port Security','Defense','Law Enforcement'],leader:{title:'Secretary of Homeland Security',name:'Kristi Noem'},deputy:{title:'Commandant of the Coast Guard',name:'Adm. Kevin Lunday*'},budget:'M',acq:'Acquisitions Directorate (CG-9) - NSC, OPC, FRC, C4IT programs'},
+  {id:'lantarea',abbr:'LANTAREA',name:'Coast Guard Atlantic Area',service:'USCG',location:'Portsmouth, VA',mission:'Operational command of all CG forces in the Atlantic, Caribbean, Gulf of Mexico, and inland waterways.',domains:['Maritime Ops','Atlantic','SAR','Law Enforcement','Caribbean'],leader:{title:'Commander',name:'VADM TBD*'},deputy:{title:'Deputy Commander',name:'RDML TBD*'},budget:'M',acq:'N/A - operational command'},
+  {id:'pacarea',abbr:'PACAREA',name:'Coast Guard Pacific Area',service:'USCG',location:'Alameda, CA',mission:'Operational command of CG forces in the Pacific, including Hawaii, Alaska, and Arctic operations.',domains:['Maritime Ops','Pacific','Arctic','SAR','Drug Interdiction'],leader:{title:'Commander',name:'VADM TBD*'},deputy:{title:'Deputy Commander',name:'RDML TBD*'},budget:'M',acq:'N/A - operational command'},
+  {id:'cg-c5i',abbr:'C5I-SC',name:'CG C5I Service Center',service:'USCG',location:'Alexandria, VA',mission:'Command, Control, Communications, Computers, Cyber, and Intelligence systems for the Coast Guard.',domains:['C5I','Cyber','IT','Comms','Intelligence'],leader:{title:'Director',name:'CAPT TBD*'},deputy:{title:'Deputy Director',name:'GS-15 TBD*'},budget:'S',acq:'CG IT/cyber contracts via CG Acquisitions Directorate'},
+  {id:'indopacom',abbr:'USINDOPACOM',name:'US Indo-Pacific Command',service:'JOINT',location:'Camp H.M. Smith, HI',mission:'Deter aggression and advance US alliances across the Indo-Pacific. Primary theater for China/Taiwan/NKorea deterrence.',domains:['Pacific Ops','Deterrence','Alliance Mgmt','Joint','China'],leader:{title:'Commander',name:'Adm. Samuel Paparo*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'PACOM J-8; Pacific Deterrence Initiative (PDI)'},
+  {id:'eucom',abbr:'USEUCOM',name:'US European Command',service:'JOINT',location:'Stuttgart, Germany',mission:'Defend NATO, deter Russia, and support European security. Commander dual-hats as SACEUR.',domains:['European Ops','NATO','Russia Deterrence','Joint','Article 5'],leader:{title:'Commander (dual-hat SACEUR)',name:'Gen. Christopher Cavoli (USA)*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'EUCOM J-8; European Deterrence Initiative (EDI)'},
+  {id:'centcom',abbr:'USCENTCOM',name:'US Central Command',service:'JOINT',location:'MacDill AFB, FL',mission:'Military operations and security cooperation in the Middle East, Central Asia, and parts of South Asia.',domains:['MENA Ops','CT','Iran Deterrence','Security Coop','Joint'],leader:{title:'Commander',name:'Gen. Michael Kurilla (USA)*'},deputy:{title:'Deputy Commander',name:'VADM TBD*'},budget:'L',acq:'CENTCOM J-8; theater security cooperation funding'},
+  {id:'socom',abbr:'USSOCOM',name:'US Special Operations Command',service:'JOINT',location:'MacDill AFB, FL',mission:'Provide fully capable SOF to geographic combatant commands for CT, UW, PSYOP, civil affairs, and direct action.',domains:['SOF','CT','UW','PSYOP','Civil Affairs','HUMINT'],leader:{title:'Commander',name:'Gen. Bryan Fenton (USA)*'},deputy:{title:'Deputy Commander',name:'VADM TBD*'},budget:'L',acq:'SOCOM J-8, SOFWERX - OTA/rapid acquisition; joint acquisition task forces'},
+  {id:'cybercom',abbr:'USCYBERCOM',name:'US Cyber Command',service:'JOINT',location:'Fort Meade, MD',mission:'Direct, synchronize, and coordinate DoD cyberspace operations. Defend DoD networks; conduct OCO/DCO.',domains:['Cyber','DCO','OCO','InfoOps','Joint Cyber'],leader:{title:'Commander (dual-hat NSA)',name:'Gen. Timothy Haugh (USAF)*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'CYBERCOM J-8; cyber platforms via service components'},
+  {id:'stratcom',abbr:'USSTRATCOM',name:'US Strategic Command',service:'JOINT',location:'Offutt AFB, NE',mission:'Nuclear deterrence, global strike, missile defense coordination, and space operations integration.',domains:['Nuclear Deterrence','Global Strike','Missile Defense','Space','C2'],leader:{title:'Commander',name:'Adm. Charles Richard (USN)*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'Nuclear modernization via service acquisition (GBSD, Columbia-class, B-21)'},
+  {id:'spacecom',abbr:'USSPACECOM',name:'US Space Command',service:'JOINT',location:'Peterson SFB, CO',mission:'Achieve and maintain space superiority. Integrate space capabilities into joint operations.',domains:['Space Superiority','SDA','Orbital Warfare','Joint','GPS Defense'],leader:{title:'Commander',name:'Gen. Stephen Whiting (USSF)*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'SPACECOM J-8; acquisition via SSC and service PEOs'},
+  {id:'transcom',abbr:'USTRANSCOM',name:'US Transportation Command',service:'JOINT',location:'Scott AFB, IL',mission:'Provide strategic mobility of US forces and sustainment worldwide via air, land, and sea.',domains:['Strategic Mobility','Airlift','Sealift','Logistics','Sustainment'],leader:{title:'Commander',name:'Gen. Jacqueline Van Ovost (USAF)*'},deputy:{title:'Deputy Commander',name:'VADM TBD*'},budget:'L',acq:'TRANSCOM J-8; commercial carrier and sealift contracts'},
+  {id:'northcom',abbr:'USNORTHCOM',name:'US Northern Command',service:'JOINT',location:'Peterson SFB, CO',mission:'Homeland defense and civil support. Dual-hats as NORAD commander.',domains:['Homeland Defense','NORAD','Civil Support','Arctic','Missile Defense'],leader:{title:'Commander (dual-hat NORAD)',name:'Gen. Glen VanHerck (USAF)*'},deputy:{title:'Deputy Commander',name:'LtGen TBD*'},budget:'L',acq:'NORTHCOM J-8; NORAD modernization programs'},
+  {id:'southcom',abbr:'USSOUTHCOM',name:'US Southern Command',service:'JOINT',location:'Doral, FL',mission:'Security cooperation and operations in Latin America and the Caribbean.',domains:['LATAM Ops','CT','Security Coop','Drug Interdiction','Joint'],leader:{title:'Commander',name:'Gen. Laura Richardson (USA)*'},deputy:{title:'Deputy Commander',name:'VADM TBD*'},budget:'M',acq:'SOUTHCOM J-8; theater security cooperation funds'},
+  {id:'africom',abbr:'USAFRICOM',name:'US Africa Command',service:'JOINT',location:'Stuttgart, Germany',mission:'Security cooperation, CT operations, and crisis response across the African continent.',domains:['Africa Ops','CT','Security Coop','Partnerships','Joint'],leader:{title:'Commander',name:'Gen. Michael Langley (USMC)*'},deputy:{title:'Deputy Commander',name:'VADM TBD*'},budget:'M',acq:'AFRICOM J-8; African security cooperation programs'}
+];
+
+var TREE = {
+  DOD:  {label:'Dept. of Defense / IC',  ids:['osd','jcs','darpa','dia','nga','nsa']},
+  ARMY: {label:'Army',                   ids:['hqda','forscom','tradoc','army-amc','inscom','arcyber','peo-c3t','peo-iews']},
+  NAVY: {label:'Navy',                   ids:['opnav','navwar','navsea','navair','nawcad','nawcwd','navsup','navfac','onr']},
+  USMC: {label:'Marine Corps',           ids:['hqmc','marcorsyscom','marforcom','marforpac']},
+  USAF: {label:'Air Force',              ids:['haf','acc','afmc','aflcmc','afrl','af-amc','hanscom']},
+  USSF: {label:'Space Force',            ids:['ocso','ssc','spoc','starcom']},
+  USCG: {label:'Coast Guard',            ids:['cg-hq','lantarea','pacarea','cg-c5i']},
+  JOINT:{label:'Combatant Commands',     ids:['indopacom','eucom','centcom','socom','cybercom','stratcom','spacecom','transcom','northcom','southcom','africom']}
+};
+
+var selId   = null;
+var svcFilt = 'ALL';
+var srch    = '';
+
+function byId(id) {
+  for (var i = 0; i < NODES.length; i++) {
+    if (NODES[i].id === id) return NODES[i];
+  }
+  return null;
+}
+
+function bars(tier, mini) {
+  var n = (tier === 'L') ? 3 : (tier === 'M') ? 2 : 1;
+  var h = '';
+  var cls = mini ? 'mb-wrap' : 'bbar-wrap';
+  var b   = mini ? 'mb' : 'bbar';
+  for (var i = 0; i < 3; i++) { h += '<div class="' + b + (i < n ? ' on' : '') + '"></div>'; }
+  return '<div class="' + cls + '">' + h + '</div>';
+}
+
+function makeDomainTag(t, mini) {
+  return '<span class="' + (mini ? 'td-tag' : 'dtag') + '">' + t + '</span>';
+}
+
+function buildTree() {
+  var panel = document.getElementById('tree-panel');
+  var h = '';
+  var keys = Object.keys(TREE);
+  for (var k = 0; k < keys.length; k++) {
+    var svc = keys[k];
+    var sec = TREE[svc];
+    var c   = SVC_COLOR[svc];
+    h += '<div class="tree-section" id="ts-' + svc + '">';
+    h += '<div class="tree-header" onclick="toggleSec(\'' + svc + '\')">';
+    h += '<div class="svc-dot" style="background:' + c + '"></div>';
+    h += '<span style="color:' + c + '">' + sec.label + '</span>';
+    h += '<span class="chevron">&#9658;</span></div>';
+    h += '<div class="tree-children">';
+    for (var j = 0; j < sec.ids.length; j++) {
+      var nodeId = sec.ids[j];
+      var nd = byId(nodeId);
+      if (!nd) { continue; }
+      var nm = (nd.name.length > 40) ? (nd.name.slice(0, 38) + '...') : nd.name;
+      h += '<div class="tree-node" id="tn-' + nodeId + '" onclick="selectNode(\'' + nodeId + '\')">';
+      h += '<span class="tn-abbr">' + nd.abbr + '</span>';
+      h += '<span class="tn-name">' + nm + '</span></div>';
+    }
+    h += '</div></div>';
+  }
+  panel.innerHTML = h;
+}
+
+function toggleSec(svc) {
+  var el = document.getElementById('ts-' + svc);
+  if (el) { el.classList.toggle('open'); }
+}
+
+function selectNode(id) {
+  var n = byId(id);
+  if (!n) { return; }
+  selId = id;
+
+  var allNodes = document.querySelectorAll('.tree-node');
+  for (var i = 0; i < allNodes.length; i++) { allNodes[i].classList.remove('sel'); }
+  var tn = document.getElementById('tn-' + id);
+  if (tn) { tn.classList.add('sel'); tn.scrollIntoView({block:'nearest'}); }
+
+  var rows = document.querySelectorAll('#mtbody tr');
+  for (var r = 0; r < rows.length; r++) {
+    if (rows[r].getAttribute('data-id') === id) { rows[r].classList.add('sel'); }
+    else { rows[r].classList.remove('sel'); }
+  }
+
+  document.getElementById('placeholder').style.display = 'none';
+  var card = document.getElementById('dcard');
+  card.classList.add('vis');
+
+  var c       = SVC_COLOR[n.service];
+  var lbl     = SVC_LABEL[n.service];
+  var tierLbl = (n.budget === 'L') ? 'LARGE' : (n.budget === 'M') ? 'MEDIUM' : 'SMALL';
+  var domTags = '';
+  for (var d = 0; d < n.domains.length; d++) { domTags += makeDomainTag(n.domains[d], false); }
+
+  var h = '';
+  h += '<div class="dheader">';
+  h += '  <div class="dbadge" style="background:' + c + '">' + lbl + '</div>';
+  h += '  <div>';
+  h += '    <div class="dabbr">' + n.abbr + '</div>';
+  h += '    <div class="dname">' + n.name + '</div>';
+  h += '    <div class="dloc">&#128205; ' + n.location + '</div>';
+  h += '  </div>';
+  h += '</div>';
+  h += '<div class="sec-label">MISSION</div>';
+  h += '<p class="mission-txt">' + n.mission + '</p>';
+  h += '<div class="sec-label">DOMAINS</div>';
+  h += '<div class="tags-row">' + domTags + '</div>';
+  h += '<div class="sec-label">LEADERSHIP &nbsp;<span style="font-size:9px;color:var(--text-dim);font-weight:400">* verify current assignment</span></div>';
+  h += '<div class="prow">';
+  h += '  <div class="pcard pri">';
+  h += '    <div class="prank">PRINCIPAL</div>';
+  h += '    <div class="pname">' + n.leader.name + '</div>';
+  h += '    <div class="ptitle">' + n.leader.title + '</div>';
+  h += '  </div>';
+  h += '  <div class="pcard dep">';
+  h += '    <div class="prank">DEPUTY / 2IC</div>';
+  h += '    <div class="pname">' + n.deputy.name + '</div>';
+  h += '    <div class="ptitle">' + n.deputy.title + '</div>';
+  h += '  </div>';
+  h += '</div>';
+  h += '<div class="info-grid">';
+  h += '  <div class="iwidget">';
+  h += '    <div class="iwlabel">BUDGET TIER</div>';
+  h += '    <div class="budget-row">' + bars(n.budget, false) + '<span class="btier">' + tierLbl + '</span></div>';
+  h += '  </div>';
+  h += '  <div class="iwidget">';
+  h += '    <div class="iwlabel">SERVICE BRANCH</div>';
+  h += '    <div class="iwval" style="color:' + c + '">' + lbl + '</div>';
+  h += '    <div class="iwsub">' + n.service + '</div>';
+  h += '  </div>';
+  h += '</div>';
+  h += '<div class="sec-label">ACQUISITION / CONTRACTING NODE</div>';
+  h += '<div class="acq-block">' + n.acq + '</div>';
+
+  card.innerHTML = h;
+}
+
+function renderMatrix() {
+  var lo  = srch.toLowerCase();
+  var tb  = document.getElementById('mtbody');
+  var out = '';
+  for (var i = 0; i < NODES.length; i++) {
+    var n    = NODES[i];
+    var svOK = (svcFilt === 'ALL' || n.service === svcFilt);
+    var srOK = true;
+    if (lo) {
+      var hay = (n.name + ' ' + n.abbr + ' ' + n.location + ' ' + n.domains.join(' ')).toLowerCase();
+      srOK = (hay.indexOf(lo) > -1);
+    }
+    if (!svOK || !srOK) { continue; }
+    var c    = SVC_COLOR[n.service];
+    var tags = '';
+    var mx   = (n.domains.length < 3) ? n.domains.length : 3;
+    for (var d = 0; d < mx; d++) { tags += makeDomainTag(n.domains[d], true); }
+    var isSel = (selId === n.id) ? 'sel' : '';
+    out += '<tr data-id="' + n.id + '" onclick="selectAndShow(\'' + n.id + '\')" class="' + isSel + '">';
+    out += '<td class="td-abbr">' + n.abbr + '</td>';
+    out += '<td style="font-size:12px;color:var(--text)">' + n.name + '</td>';
+    out += '<td><span class="td-pip" style="background:' + c + '"></span><span class="td-svc" style="color:' + c + '">' + n.service + '</span></td>';
+    out += '<td class="td-loc">' + n.location + '</td>';
+    out += '<td><div class="td-pname">' + n.leader.name + '</div><div class="td-ptitle">' + n.leader.title + '</div></td>';
+    out += '<td><div class="td-pname">' + n.deputy.name + '</div><div class="td-ptitle">' + n.deputy.title + '</div></td>';
+    out += '<td><div class="td-ptags">' + tags + '</div></td>';
+    out += '<td>' + bars(n.budget, true) + '</td>';
+    out += '<td class="td-acq">' + n.acq.split(' - ')[0] + '</td>';
+    out += '</tr>';
+  }
+  tb.innerHTML = out;
+}
+
+function selectAndShow(id) {
+  selId = id;
+  selectNode(id);
+  renderMatrix();
+}
+
+function buildFilters() {
+  var wrap = document.getElementById('svc-filters');
+  var svcs = ['ALL','DOD','ARMY','NAVY','USMC','USAF','USSF','USCG','JOINT'];
+  var h = '';
+  for (var i = 0; i < svcs.length; i++) {
+    var s = svcs[i];
+    var active = (s === 'ALL') ? ' on' : '';
+    h += '<button class="fbtn' + active + '" onclick="setFilter(\'' + s + '\',this)">' + s + '</button>';
+  }
+  wrap.innerHTML = h;
+}
+
+function setFilter(svc, btn) {
+  svcFilt = svc;
+  var btns = document.querySelectorAll('#svc-filters .fbtn');
+  for (var i = 0; i < btns.length; i++) { btns[i].classList.remove('on'); }
+  btn.classList.add('on');
+  renderMatrix();
+}
+
+function switchView(v) {
+  var ov = document.getElementById('org-view');
+  var mv = document.getElementById('matrix-view');
+  var to = document.getElementById('tab-org');
+  var tm = document.getElementById('tab-mat');
+  if (v === 'org') {
+    ov.classList.remove('hidden');
+    mv.classList.remove('active');
+    to.classList.add('active');
+    tm.classList.remove('active');
+  } else {
+    ov.classList.add('hidden');
+    mv.classList.add('active');
+    to.classList.remove('active');
+    tm.classList.add('active');
+    renderMatrix();
+  }
+}
+
+document.getElementById('tab-org').addEventListener('click', function() { switchView('org'); });
+document.getElementById('tab-mat').addEventListener('click', function() { switchView('matrix'); });
+document.getElementById('msearch').addEventListener('input', function() { srch = this.value; renderMatrix(); });
+
+buildTree();
+buildFilters();
+renderMatrix();
+toggleSec('DOD');
+</script>
+</body>
+</html>
